@@ -79,10 +79,11 @@ See `pipeline-diagram.png` for the visual architecture diagram.
 myapp/
 ├── src/
 │   ├── app.js              # Express.js application
-│   ├── package.json        # Node.js dependencies & scripts
-│   └── package-lock.json   # Locked dependency versions
+│   ├── package.json        # Node.js dependencies
+│   └── package-lock.json   # Locked dependency
 ├── tests/
-│   └── app.test.js         # Jest unit tests (HTTP + sanity)
+│   └── app.test.js         # Jest unit tests
+    └── health.test.js      # health unit tests
 ├── Dockerfile              # Multi-stage Docker build
 ├── buildspec.yml           # CodeBuild instructions
 ├── appspec.yml             # CodeDeploy ECS deployment spec
@@ -345,3 +346,21 @@ curl http://localhost:3000/health    # Health check → {"status":"healthy"}
 ---
 Deployed on Amazon ECS Fargate with full Blue/Green CI/CD automation.
 
+### Images
+
+![Project Structure](images/project-structure.png)
+
+*Figure 1: Project Structure locally*
+
+
+
+![Pipeline Diagram](images/aws_cicd_pipeline_diagram.svg)
+*Figure 2: Pipeline diagram with clear picture of how the architecture looks like for the project*
+
+
+![Health Endpoint Test Working](images/health-Endpoint-Test.png)
+*Figure 3: Confirming after testing the application the helath endpoint is working*
+
+
+![Root Endpoint Test Working](images/Root-Endpoint-Test.png)
+*Figure 4: Confirming after testing the application the root endpoint is working*
