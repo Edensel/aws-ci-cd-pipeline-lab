@@ -3,21 +3,8 @@ Resources:
   - TargetService:
       Type: AWS::ECS::Service
       Properties:
-        TaskDefinition: "arn:aws:ecs:${AWS_REGION}:${AWS_ACCOUNT_ID}:task-definition/${TASK_DEFINITION_NAME}"
+        TaskDefinition: "capstone-app-task"
         LoadBalancerInfo:
-          ContainerName: "${CONTAINER_NAME}"
-          ContainerPort: ${CONTAINER_PORT}
+          ContainerName: "capstone-container"
+          ContainerPort: 3000
         PlatformVersion: "LATEST"
-        NetworkConfiguration:
-          AwsvpcConfiguration:
-            Subnets: 
-              - "${SUBNET_1}"
-              - "${SUBNET_2}"
-            SecurityGroups: 
-              - "${SECURITY_GROUP}"
-            AssignPublicIp: "ENABLED"
-Hooks:
-  - BeforeInstall: "echo 'Starting deployment...'"
-  - AfterInstall: "echo 'Deployment configuration applied'"
-  - ApplicationStart: "echo 'Application starting...'"
-  - ValidateService: "echo 'Validating service health...'"
