@@ -364,3 +364,7 @@ Deployed on Amazon ECS Fargate with full Blue/Green CI/CD automation.
 
 ![Root Endpoint Test Working](images/Root-Endpoint-Test.png)
 *Figure 4: Confirming after testing the application the root endpoint is working*
+
+
+![Root Endpoint Test Working](images/demopage.png)
+*Figure 4: Demo page working perfect*
