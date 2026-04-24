@@ -368,3 +368,47 @@ Deployed on Amazon ECS Fargate with full Blue/Green CI/CD automation.
 
 ![Root Endpoint Test Working](images/demopage.png)
 *Figure 4: Demo page working perfect*
+
+
+## 📸 Deployment Screenshots
+
+### Load Balancer Configuration
+
+![Load Balancer Active](images/loadbalance-active.png)
+*Figure 1: Application Load Balancer successfully created and active*
+
+### Target Group
+
+![Target Group Created](images/target-group-created.png)
+*Figure 2: Target group configured for ECS Fargate tasks*
+
+### ECS Service Deployment
+
+![Deployment Completed](images/deployment-completed.png)
+*Figure 3: ECS Service showing 2 running tasks with steady state*
+
+### Application Endpoints
+
+#### Root Endpoint
+![Root Endpoint](images/root_endpoint.png)
+*Figure 4: Root endpoint returning welcome message with pipeline information*
+
+#### Health Check Endpoint
+![Health Endpoint](images/health_endpoint.png)
+*Figure 5: Health check endpoint showing application status*
+
+#### API Info Endpoint
+![API Info Endpoint](images/API_info_endpoint.png)
+*Figure 6: API information endpoint with application metadata*
+
+#### Demo Page
+![Demo Page](images/Demo_page_deployment.png)
+*Figure 7: HTML demo page showing deployment information*
+
+### AWS CLI Verification
+
+![CLI Root & Health Endpoints](images/AWS-cli-root-health-endpoints.png)
+*Figure 8: AWS CLI showing successful API responses*
+
+![CLI Demo Page](images/AWS-cli-Demo-Page-endpoint.png)
+*Figure 9: AWS CLI showing demo page HTML output*
