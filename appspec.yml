@@ -7,4 +7,3 @@ Resources:
         LoadBalancerInfo:
           ContainerName: "capstone-container"
           ContainerPort: 3000
-        PlatformVersion: "LATEST"

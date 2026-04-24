@@ -5,7 +5,7 @@ phases:
     commands:
       - echo "Logging in to Amazon ECR..."
       - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 311208285790.dkr.ecr.us-east-1.amazonaws.com
-      - REPOSITORY_URI=311208285790.dkr.ecr.us-east-1.amazonaws.com/capstone-app-repo
+      - REPOSITORY_URI=311208285790.dkr.ecr.us-east-1.amazonaws.com/capstone-ci-cd-app-repo
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_TAG=${COMMIT_HASH:=latest}
       
@@ -29,3 +29,5 @@ phases:
 
 artifacts:
   files: imagedefinitions.json
+
+
