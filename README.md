@@ -67,9 +67,48 @@ AWS CodePipeline
     │                                          └── App Load Balancer
     │
     └── Monitoring: CloudWatch Alarms + SNS Notifications
-```
 
-See `pipeline-diagram.png` for the visual architecture diagram.
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    MY ACTUAL CI/CD ARCHITECTURE                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│   GitHub     │────▶│   Docker     │────▶│    ECR       │
+│   Repository │     │   Build      │     │  Repository  │
+│   (Source)   │     │  (Local/CLI) │     │  (Image Store)│
+└──────────────┘     └──────────────┘     └──────────────┘
+                             │                    │
+                             │                    │
+                             ▼                    ▼
+                      ┌─────────────────────────────────┐
+                      │         AWS ECS Fargate          │
+                      │                                  │
+                      │  ┌─────────────────────────────┐ │
+                      │  │    capstone-service         │ │
+                      │  │  ┌─────────┐ ┌─────────┐   │ │
+                      │  │  │ Task 1  │ │ Task 2  │   │ │
+                      │  │  │Port 3000│ │Port 3000│   │ │
+                      │  │  └────┬────┘ └────┬────┘   │ │
+                      │  └───────┼───────────┼─────────┘ │
+                      │          │           │           │
+                      └──────────┼───────────┼───────────┘
+                                 │           │
+                                 ▼           ▼
+                      ┌─────────────────────────────────┐
+                      │    Application Load Balancer    │
+                      │         capstone-alb            │
+                      │                                  │
+                      │  Blue Target Group  (capstone-tg)│
+                      │  Green Target Group (capstone-tg-green)│
+                      └─────────────────────────────────┘
+                                      │
+                                      ▼
+                              ┌─────────────┐
+                              │   Users     │
+                              │  (Browser)  │
+                              └─────────────┘
+```
 
 ---
 
@@ -353,11 +392,6 @@ Deployed on Amazon ECS Fargate with full Blue/Green CI/CD automation.
 *Figure 1: Project Structure locally*
 
 
-
-![Pipeline Diagram](images/aws_cicd_pipeline_diagram.svg)
-*Figure 2: Pipeline diagram with clear picture of how the architecture looks like for the project*
-
-
 ![Health Endpoint Test Working](images/health-Endpoint-Test.png)
 *Figure 3: Confirming after testing the application the helath endpoint is working*
 
@@ -412,3 +446,43 @@ Deployed on Amazon ECS Fargate with full Blue/Green CI/CD automation.
 
 ![CLI Demo Page](images/AWS-cli-Demo-Page-endpoint.png)
 *Figure 9: AWS CLI showing demo page HTML output*
+
+# Live Application
+
+| Endpoint | URL |
+|----------|-----|
+| Root | http://capstone-alb-2089285546.us-east-1.elb.amazonaws.com/ |
+| Health | http://capstone-alb-2089285546.us-east-1.elb.amazonaws.com/health |
+| API Info | http://capstone-alb-2089285546.us-east-1.elb.amazonaws.com/api/info |
+| Metrics | http://capstone-alb-2089285546.us-east-1.elb.amazonaws.com/metrics |
+| Demo | http://capstone-alb-2089285546.us-east-1.elb.amazonaws.com/demo |
+
+## Verification Reports
+
+### CLI Verification Report
+
+The following output confirms all components are operational:
+
+![CLI Verification Report](images/verification-cli-report.png)
+
+*Figure 1: Complete CLI verification showing ECS service, load balancer, ECR image, CloudWatch alarms, and SNS topic all reporting successful status.*
+
+### CloudWatch Monitoring Dashboard
+
+The monitoring dashboard shows real-time metrics:
+
+![CloudWatch Dashboard](images/dashboard.png)
+
+*Figure 2: CloudWatch dashboard displaying ECS service health metrics, load balancer performance, and task health monitoring.*
+
+### SNS Email Notifications
+
+Email notifications confirm the monitoring system is active:
+
+![SNS Subscription Confirmation](images/email-sns.png)
+
+*Figure 3: SNS subscription confirmation email received and confirmed.*
+
+![SNS Test Notification](images/AWS-Notification-Test-Notification.png)
+
+*Figure 4: Test notification from CloudWatch alarms demonstrating working alert system.*
