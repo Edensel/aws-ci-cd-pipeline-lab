@@ -1,0 +1,1227 @@
+================================================================================
+                    AWS CI/CD CAPSTONE PROJECT
+            End-to-End CI/CD Pipeline on AWS - Complete Guide
+================================================================================
+
+Author: Capstone Project
+Date: April 2026
+Version: 2.0
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+
+1. Project Overview
+2. Prerequisites
+3. Architecture Diagram
+4. Step-by-Step Setup Commands
+   4.1 Initial Setup & IAM Roles
+   4.2 ECR Repository Creation
+   4.3 VPC & Networking Setup
+   4.4 Load Balancer Setup
+   4.5 ECS Cluster & Task Definition
+   4.6 ECS Service Creation
+   4.7 Docker Image Build & Push
+   4.8 CodeBuild Setup
+   4.9 CodeDeploy Setup
+   4.10 CodePipeline Setup
+   4.11 Monitoring & Alerts Setup
+5. Testing & Verification Commands
+6. Common Errors & Troubleshooting
+7. Cleanup Commands
+8. Quick Reference Card
+
+================================================================================
+1. PROJECT OVERVIEW
+================================================================================
+
+This project builds a complete CI/CD pipeline on AWS that:
+- Takes code from GitHub
+- Builds and tests a Node.js application
+- Packages it into a Docker container
+- Pushes to Amazon ECR
+- Deploys to ECS Fargate behind an Application Load Balancer
+- Includes Blue/Green deployment capability
+- Configures CloudWatch monitoring with SNS alerts
+
+AWS Services Used:
+- AWS CodePipeline (orchestration)
+- AWS CodeBuild (build and test)
+- AWS CodeDeploy (deployment)
+- Amazon ECR (container registry)
+- Amazon ECS Fargate (compute)
+- Application Load Balancer (traffic routing)
+- Amazon CloudWatch (monitoring)
+- Amazon SNS (notifications)
+- AWS IAM (security)
+
+================================================================================
+2. PREREQUISITES
+================================================================================
+
+Before starting, ensure you have:
+
+2.1 AWS Account Requirements:
+- Active AWS account with billing enabled
+- IAM user with administrator permissions (not root)
+- AWS region set to us-east-1 (N. Virginia)
+
+2.2 Local Machine Requirements:
+
+# Check if AWS CLI is installed
+aws --version
+
+# Configure AWS CLI
+aws configure
+# Enter: AWS Access Key ID
+# Enter: AWS Secret Access Key
+# Enter: Default region name: us-east-1
+# Enter: Default output format: json
+
+# Check if Docker is installed
+docker --version
+
+# Check if Node.js is installed
+node --version
+npm --version
+
+# Check if Git is installed
+git --version
+
+2.3 GitHub Requirements:
+- GitHub account
+- Repository created for the project
+- Personal Access Token for CLI operations
+
+2.4 Environment Variables to Replace:
+- YOUR_AWS_ACCOUNT_ID: Your AWS account number
+- YOUR_GITHUB_USERNAME: Your GitHub username
+- YOUR_GITHUB_REPO: Your repository name
+- YOUR_EMAIL: Email for SNS notifications
+
+================================================================================
+3. ARCHITECTURE DIAGRAM
+================================================================================
+
++---------------------------------------------------------------------------------+
+|                         CI/CD PIPELINE ARCHITECTURE                             |
++---------------------------------------------------------------------------------+
+
+                                    +-----------------+
+                                    |   Developer     |
+                                    |   git push      |
+                                    +--------+--------+
+                                             |
+                                             v
++---------------------------------------------------------------------------------+
+|  STAGE 1: SOURCE CODE MANAGEMENT                                              |
+|  +-----------------------------------------------------------------------+     |
+|  |                         GitHub Repository                              |     |
+|  |  https://github.com/YOUR_USERNAME/YOUR_REPO                           |     |
+|  |  +-- src/           (Node.js Application)                             |     |
+|  |  +-- tests/         (Jest Unit Tests)                                 |     |
+|  |  +-- Dockerfile     (Container Definition)                            |     |
+|  |  +-- buildspec.yml  (CodeBuild Instructions)                          |     |
+|  |  +-- appspec.yml    (CodeDeploy Spec)                                 |     |
+|  |  +-- taskdef.json   (ECS Task Definition)                             |     |
+|  +-----------------------------------------------------------------------+     |
++---------------------------------------------------------------------------------+
+                                             |
+                                             v
++---------------------------------------------------------------------------------+
+|  STAGE 2: BUILD & REGISTRY                                                     |
+|  +-------------------------+           +-------------------------------------+ |
+|  |   AWS CodeBuild         |---------->|         Amazon ECR                  | |
+|  |   - Install deps        |           |  Repository: myapp-repo             | |
+|  |   - Run tests           |           |  Image: latest                      | |
+|  |   - Build image         |           +-------------------------------------+ |
+|  |   - Push to ECR         |                                                 |
+|  +-------------------------+                                                 |
++---------------------------------------------------------------------------------+
+                                             |
+                                             v
++---------------------------------------------------------------------------------+
+|  STAGE 3: MANUAL APPROVAL                                                    |
+|  +-----------------------------------------------------------------------+     |
+|  |                    Manual Approval Gate                                |     |
+|  |                    (SNS Email Notification)                           |     |
+|  +-----------------------------------------------------------------------+     |
++---------------------------------------------------------------------------------+
+                                             |
+                                             v
++---------------------------------------------------------------------------------+
+|  STAGE 4: DEPLOYMENT                                                         |
+|  +-----------------------------------------------------------------------+     |
+|  |                    AWS CodeDeploy (Blue/Green)                         |     |
+|  +-----------------------------------------------------------------------+     |
++---------------------------------------------------------------------------------+
+                                             |
+                                             v
++---------------------------------------------------------------------------------+
+|  STAGE 5: COMPUTE & ROUTING                                                  |
+|  +-----------------------------------------------------------------------+     |
+|  |                    Amazon ECS Fargate                                  |     |
+|  |  Cluster: myapp-cluster                                                |     |
+|  |  Service: myapp-service (2 tasks)                                      |     |
+|  |  Task Definition: myapp-task (port 3000)                               |     |
+|  +-----------------------------------------------------------------------+     |
+|                                      |                                       |
+|                                      v                                       |
+|  +-----------------------------------------------------------------------+     |
+|  |              Application Load Balancer (myapp-alb)                     |     |
+|  |  Blue Target Group: myapp-tg-blue (port 3000)                          |     |
+|  |  Green Target Group: myapp-tg-green (port 3000)                        |     |
+|  +-----------------------------------------------------------------------+     |
++---------------------------------------------------------------------------------+
+                                             |
+                                             v
+                                    +-----------------+
+                                    |   End Users     |
+                                    +-----------------+
+
++---------------------------------------------------------------------------------+
+|                             MONITORING LAYER                                    |
+|                    +-------------------------------------+                     |
+|                    |         Amazon CloudWatch           |                     |
+|                    |  - CPU Utilization Alarms           |                     |
+|                    |  - Memory Utilization Alarms        |                     |
+|                    |  - Custom Dashboard                 |                     |
+|                    +-----------------+-------------------+                     |
+|                                      |                                         |
+|                                      v                                         |
+|                    +-------------------------------------+                     |
+|                    |         Amazon SNS                   |                     |
+|                    |  - Email Notifications              |                     |
+|                    |  - Topic: myapp-alerts              |                     |
+|                    +-------------------------------------+                     |
++---------------------------------------------------------------------------------+
+
+================================================================================
+4. STEP-BY-STEP SETUP COMMANDS
+================================================================================
+
+4.1 INITIAL SETUP & IAM ROLES
+================================================================================
+
+# Get your AWS Account ID
+aws sts get-caller-identity --query Account --output text
+
+# Create ECS Task Execution Role
+cat > ecs-trust-policy.json << 'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {"Service": "ecs-tasks.amazonaws.com"},
+    "Action": "sts:AssumeRole"
+  }]
+}
+EOF
+
+aws iam create-role \
+  --role-name ecsTaskExecutionRole \
+  --assume-role-policy-document file://ecs-trust-policy.json
+
+aws iam attach-role-policy \
+  --role-name ecsTaskExecutionRole \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+aws iam attach-role-policy \
+  --role-name ecsTaskExecutionRole \
+  --policy-arn arn:aws:iam::aws:policy/AmazonECRReadOnly
+
+# Create CodeBuild Service Role
+cat > codebuild-trust-policy.json << 'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {"Service": "codebuild.amazonaws.com"},
+    "Action": "sts:AssumeRole"
+  }]
+}
+EOF
+
+aws iam create-role \
+  --role-name codebuild-role \
+  --assume-role-policy-document file://codebuild-trust-policy.json
+
+aws iam attach-role-policy \
+  --role-name codebuild-role \
+  --policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser
+
+aws iam attach-role-policy \
+  --role-name codebuild-role \
+  --policy-arn arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+
+# Create CodePipeline Service Role
+cat > codepipeline-trust-policy.json << 'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {"Service": "codepipeline.amazonaws.com"},
+    "Action": "sts:AssumeRole"
+  }]
+}
+EOF
+
+aws iam create-role \
+  --role-name codepipeline-role \
+  --assume-role-policy-document file://codepipeline-trust-policy.json
+
+# Attach required policies for CodePipeline
+aws iam attach-role-policy \
+  --role-name codepipeline-role \
+  --policy-arn arn:aws:iam::aws:policy/AWSCodePipeline_FullAccess
+
+aws iam attach-role-policy \
+  --role-name codepipeline-role \
+  --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess
+
+aws iam attach-role-policy \
+  --role-name codepipeline-role \
+  --policy-arn arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess
+
+aws iam attach-role-policy \
+  --role-name codepipeline-role \
+  --policy-arn arn:aws:iam::aws:policy/AmazonECS_FullAccess
+
+echo "IAM Roles created successfully!"
+
+
+4.2 ECR REPOSITORY CREATION
+================================================================================
+
+# Create ECR repository
+aws ecr create-repository \
+  --repository-name myapp-repo \
+  --region us-east-1 \
+  --image-scanning-configuration scanOnPush=true
+
+# Note the repository URI from output
+# Format: YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/myapp-repo
+
+# Verify repository was created
+aws ecr describe-repositories --repository-names myapp-repo
+
+
+4.3 VPC & NETWORKING SETUP
+================================================================================
+
+# Create VPC
+VPC_ID=$(aws ec2 create-vpc --cidr-block 10.0.0.0/16 --query 'Vpc.VpcId' --output text)
+aws ec2 create-tags --resources $VPC_ID --tags Key=Name,Value=myapp-vpc
+
+# Create Subnets
+SUBNET1=$(aws ec2 create-subnet \
+  --vpc-id $VPC_ID \
+  --cidr-block 10.0.1.0/24 \
+  --availability-zone us-east-1a \
+  --query 'Subnet.SubnetId' --output text)
+aws ec2 create-tags --resources $SUBNET1 --tags Key=Name,Value=myapp-subnet-1a
+
+SUBNET2=$(aws ec2 create-subnet \
+  --vpc-id $VPC_ID \
+  --cidr-block 10.0.2.0/24 \
+  --availability-zone us-east-1b \
+  --query 'Subnet.SubnetId' --output text)
+aws ec2 create-tags --resources $SUBNET2 --tags Key=Name,Value=myapp-subnet-1b
+
+# Create Internet Gateway
+IGW_ID=$(aws ec2 create-internet-gateway --query 'InternetGateway.InternetGatewayId' --output text)
+aws ec2 attach-internet-gateway --internet-gateway-id $IGW_ID --vpc-id $VPC_ID
+aws ec2 create-tags --resources $IGW_ID --tags Key=Name,Value=myapp-igw
+
+# Create Route Table
+ROUTE_TABLE_ID=$(aws ec2 create-route-table --vpc-id $VPC_ID --query 'RouteTable.RouteTableId' --output text)
+aws ec2 create-route --route-table-id $ROUTE_TABLE_ID --destination-cidr-block 0.0.0.0/0 --gateway-id $IGW_ID
+
+# Associate subnets with route table
+aws ec2 associate-route-table --subnet-id $SUBNET1 --route-table-id $ROUTE_TABLE_ID
+aws ec2 associate-route-table --subnet-id $SUBNET2 --route-table-id $ROUTE_TABLE_ID
+
+# Enable auto-assign public IP on subnets
+aws ec2 modify-subnet-attribute --subnet-id $SUBNET1 --map-public-ip-on-launch
+aws ec2 modify-subnet-attribute --subnet-id $SUBNET2 --map-public-ip-on-launch
+
+# Create Security Group
+SG_ID=$(aws ec2 create-security-group \
+  --group-name myapp-sg \
+  --description "Security group for myapp" \
+  --vpc-id $VPC_ID \
+  --query 'GroupId' --output text)
+
+# Add inbound rules
+aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 80 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 3000 --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 22 --cidr 0.0.0.0/0
+
+echo "VPC_ID=$VPC_ID"
+echo "SUBNET1=$SUBNET1"
+echo "SUBNET2=$SUBNET2"
+echo "SG_ID=$SG_ID"
+
+
+4.4 LOAD BALANCER SETUP
+================================================================================
+
+# Create Target Group (Blue)
+TG_BLUE_ARN=$(aws elbv2 create-target-group \
+  --name myapp-tg-blue \
+  --protocol HTTP \
+  --port 3000 \
+  --vpc-id $VPC_ID \
+  --target-type ip \
+  --health-check-path /health \
+  --health-check-protocol HTTP \
+  --healthy-threshold-count 2 \
+  --unhealthy-threshold-count 2 \
+  --health-check-timeout-seconds 5 \
+  --health-check-interval-seconds 30 \
+  --query 'TargetGroups[0].TargetGroupArn' --output text)
+
+# Create Target Group (Green) for Blue/Green deployment
+TG_GREEN_ARN=$(aws elbv2 create-target-group \
+  --name myapp-tg-green \
+  --protocol HTTP \
+  --port 3000 \
+  --vpc-id $VPC_ID \
+  --target-type ip \
+  --health-check-path /health \
+  --query 'TargetGroups[0].TargetGroupArn' --output text)
+
+# Create Application Load Balancer
+ALB_ARN=$(aws elbv2 create-load-balancer \
+  --name myapp-alb \
+  --subnets $SUBNET1 $SUBNET2 \
+  --security-groups $SG_ID \
+  --scheme internet-facing \
+  --type application \
+  --query 'LoadBalancers[0].LoadBalancerArn' --output text)
+
+# Create Listener
+LISTENER_ARN=$(aws elbv2 create-listener \
+  --load-balancer-arn $ALB_ARN \
+  --protocol HTTP \
+  --port 80 \
+  --default-actions Type=forward,TargetGroupArn=$TG_BLUE_ARN \
+  --query 'Listeners[0].ListenerArn' --output text)
+
+# Get ALB DNS Name
+ALB_DNS=$(aws elbv2 describe-load-balancers --load-balancer-arns $ALB_ARN --query 'LoadBalancers[0].DNSName' --output text)
+echo "ALB DNS: $ALB_DNS"
+
+
+4.5 ECS CLUSTER & TASK DEFINITION
+================================================================================
+
+# Create ECS Cluster
+aws ecs create-cluster --cluster-name myapp-cluster
+
+# Create Task Definition file
+cat > taskdef.json << 'EOF'
+{
+  "family": "myapp-task",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "myapp-container",
+      "image": "YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/myapp-repo:latest",
+      "essential": true,
+      "portMappings": [{"containerPort": 3000}],
+      "environment": [
+        {"name": "NODE_ENV", "value": "production"},
+        {"name": "APP_VERSION", "value": "2.0.0"}
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/myapp",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ]
+}
+EOF
+
+# Replace YOUR_ACCOUNT_ID in taskdef.json (edit manually or use sed)
+# sed -i "s/YOUR_ACCOUNT_ID/$YOUR_ACCOUNT_ID/g" taskdef.json
+
+# Register Task Definition
+aws ecs register-task-definition --cli-input-json file://taskdef.json
+
+
+4.6 ECS SERVICE CREATION
+================================================================================
+
+# Create ECS Service
+aws ecs create-service \
+  --cluster myapp-cluster \
+  --service-name myapp-service \
+  --task-definition myapp-task \
+  --desired-count 2 \
+  --launch-type FARGATE \
+  --deployment-controller type=ECS \
+  --network-configuration "awsvpcConfiguration={subnets=[$SUBNET1,$SUBNET2],securityGroups=[$SG_ID],assignPublicIp=ENABLED}" \
+  --load-balancers "targetGroupArn=$TG_BLUE_ARN,containerName=myapp-container,containerPort=3000"
+
+# Verify service is running
+aws ecs describe-services \
+  --cluster myapp-cluster \
+  --services myapp-service \
+  --query 'services[0].[serviceName,status,desiredCount,runningCount]' \
+  --output table
+
+
+4.7 DOCKER IMAGE BUILD & PUSH
+================================================================================
+
+# Create Dockerfile
+cat > Dockerfile << 'EOF'
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY src/package*.json ./
+RUN npm install --production
+
+COPY src/ ./src/
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+CMD ["node", "src/app.js"]
+EOF
+
+# Build Docker image
+docker build -t myapp-image .
+
+# Login to ECR
+aws ecr get-login-password --region us-east-1 | \
+  docker login --username AWS --password-stdin $YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com
+
+# Tag and push image
+docker tag myapp-image:latest $YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/myapp-repo:latest
+docker push $YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/myapp-repo:latest
+
+# Verify image was pushed
+aws ecr describe-images --repository-name myapp-repo --query 'imageDetails[0].imageTags[0]' --output text
+
+
+4.8 CODEBUILD SETUP
+================================================================================
+
+# Create buildspec.yml
+cat > buildspec.yml << 'EOF'
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo "Logging in to Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/myapp-repo
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:=latest}
+      
+  build:
+    commands:
+      - echo "Installing dependencies..."
+      - cd src && npm install
+      - echo "Running tests..."
+      - npm test
+      - cd ..
+      - echo "Building Docker image..."
+      - docker build -t $REPOSITORY_URI:latest .
+      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
+      
+  post_build:
+    commands:
+      - echo "Pushing to ECR..."
+      - docker push $REPOSITORY_URI:latest
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - printf '[{"name":"myapp-container","imageUri":"%s"}]' $REPOSITORY_URI:latest > imagedefinitions.json
+
+artifacts:
+  files: imagedefinitions.json
+EOF
+
+# Create S3 bucket for CodeBuild artifacts
+aws s3 mb s3://myapp-codebuild-bucket-$YOUR_ACCOUNT_ID
+
+# Create CodeBuild project
+aws codebuild create-project \
+  --name myapp-build \
+  --source type=GITHUB,location=https://github.com/$YOUR_GITHUB_USERNAME/$YOUR_GITHUB_REPO \
+  --source-version main \
+  --artifacts type=S3,location=myapp-codebuild-bucket-$YOUR_ACCOUNT_ID,packaging=ZIP \
+  --environment type=LINUX_CONTAINER,computeType=BUILD_GENERAL1_MEDIUM,image=aws/codebuild/amazonlinux2-x86_64-standard:5.0,privilegedMode=true \
+  --service-role arn:aws:iam::$YOUR_ACCOUNT_ID:role/codebuild-role
+
+
+4.9 CODEPIPELINE SETUP
+================================================================================
+
+# Create CodePipeline
+aws codepipeline create-pipeline \
+  --cli-input-json '{
+    "pipeline": {
+      "name": "myapp-pipeline",
+      "roleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/codepipeline-role",
+      "artifactStore": {
+        "type": "S3",
+        "location": "myapp-codebuild-bucket-YOUR_ACCOUNT_ID"
+      },
+      "stages": [
+        {
+          "name": "Source",
+          "actions": [{
+            "name": "Source",
+            "actionTypeId": {
+              "category": "Source",
+              "owner": "ThirdParty",
+              "provider": "GitHub",
+              "version": "1"
+            },
+            "configuration": {
+              "Owner": "YOUR_GITHUB_USERNAME",
+              "Repo": "YOUR_GITHUB_REPO",
+              "Branch": "main",
+              "OAuthToken": "YOUR_GITHUB_TOKEN"
+            },
+            "outputArtifacts": [{"name": "SourceArtifact"}],
+            "runOrder": 1
+          }]
+        },
+        {
+          "name": "Build",
+          "actions": [{
+            "name": "Build",
+            "actionTypeId": {
+              "category": "Build",
+              "owner": "AWS",
+              "provider": "CodeBuild",
+              "version": "1"
+            },
+            "configuration": {"ProjectName": "myapp-build"},
+            "inputArtifacts": [{"name": "SourceArtifact"}],
+            "outputArtifacts": [{"name": "BuildArtifact"}],
+            "runOrder": 1
+          }]
+        },
+        {
+          "name": "Approval",
+          "actions": [{
+            "name": "ManualApproval",
+            "actionTypeId": {
+              "category": "Approval",
+              "owner": "AWS",
+              "provider": "Manual",
+              "version": "1"
+            },
+            "configuration": {},
+            "runOrder": 1
+          }]
+        },
+        {
+          "name": "Deploy",
+          "actions": [{
+            "name": "Deploy",
+            "actionTypeId": {
+              "category": "Deploy",
+              "owner": "AWS",
+              "provider": "ECS",
+              "version": "1"
+            },
+            "configuration": {
+              "ClusterName": "myapp-cluster",
+              "ServiceName": "myapp-service",
+              "FileName": "imagedefinitions.json"
+            },
+            "inputArtifacts": [{"name": "BuildArtifact"}],
+            "runOrder": 1
+          }]
+        }
+      ]
+    }
+  }'
+
+
+4.10 MONITORING & ALERTS SETUP
+================================================================================
+
+# Create SNS Topic for alerts
+aws sns create-topic --name myapp-alerts
+TOPIC_ARN=$(aws sns list-topics --query 'Topics[0].TopicArn' --output text)
+
+# Subscribe email to SNS Topic
+aws sns subscribe \
+  --topic-arn $TOPIC_ARN \
+  --protocol email \
+  --notification-endpoint YOUR_EMAIL
+
+# Create CloudWatch Dashboard
+aws cloudwatch put-dashboard \
+  --dashboard-name MyApp-Monitoring \
+  --dashboard-body '{
+    "widgets": [
+      {
+        "type": "metric",
+        "properties": {
+          "metrics": [
+            ["AWS/ECS", "CPUUtilization", "ServiceName", "myapp-service", "ClusterName", "myapp-cluster"],
+            ["AWS/ECS", "MemoryUtilization", "ServiceName", "myapp-service", "ClusterName", "myapp-cluster"]
+          ],
+          "period": 300,
+          "stat": "Average",
+          "region": "us-east-1",
+          "title": "ECS Service Metrics"
+        }
+      }
+    ]
+  }'
+
+# Create CloudWatch Alarm for High CPU
+aws cloudwatch put-metric-alarm \
+  --alarm-name myapp-high-cpu \
+  --alarm-description "Alert when CPU exceeds 80%" \
+  --metric-name CPUUtilization \
+  --namespace AWS/ECS \
+  --statistic Average \
+  --period 300 \
+  --evaluation-periods 2 \
+  --threshold 80 \
+  --comparison-operator GreaterThanThreshold \
+  --dimensions "Name=ClusterName,Value=myapp-cluster" "Name=ServiceName,Value=myapp-service" \
+  --alarm-actions $TOPIC_ARN
+
+# Create CloudWatch Alarm for High Memory
+aws cloudwatch put-metric-alarm \
+  --alarm-name myapp-high-memory \
+  --alarm-description "Alert when memory exceeds 85%" \
+  --metric-name MemoryUtilization \
+  --namespace AWS/ECS \
+  --statistic Average \
+  --period 300 \
+  --evaluation-periods 2 \
+  --threshold 85 \
+  --comparison-operator GreaterThanThreshold \
+  --dimensions "Name=ClusterName,Value=myapp-cluster" "Name=ServiceName,Value=myapp-service" \
+  --alarm-actions $TOPIC_ARN
+
+echo "Monitoring configured successfully!"
+
+================================================================================
+5. TESTING & VERIFICATION COMMANDS
+================================================================================
+
+5.1 Check ECS Service Status
+--------------------------------------------------------------------------------
+
+# Get service status
+aws ecs describe-services \
+  --cluster myapp-cluster \
+  --services myapp-service \
+  --query 'services[0].[serviceName,status,runningCount,desiredCount]' \
+  --output table
+
+# Expected output:
+# | myapp-service | ACTIVE | 2 | 2 |
+
+
+5.2 Check Load Balancer Status
+--------------------------------------------------------------------------------
+
+# Get ALB DNS and status
+ALB_DNS=$(aws elbv2 describe-load-balancers --names myapp-alb --query 'LoadBalancers[0].DNSName' --output text)
+echo "ALB DNS: $ALB_DNS"
+
+# Check ALB state
+aws elbv2 describe-load-balancers --names myapp-alb --query 'LoadBalancers[0].State.Code' --output text
+# Expected output: active
+
+
+5.3 Check Target Group Health
+--------------------------------------------------------------------------------
+
+# Get target group ARN
+TG_ARN=$(aws elbv2 describe-target-groups --names myapp-tg-blue --query 'TargetGroups[0].TargetGroupArn' --output text)
+
+# Check target health
+aws elbv2 describe-target-health --target-group-arn $TG_ARN \
+  --query 'TargetHealthDescriptions[*].TargetHealth.State' --output text
+
+# Expected output: healthy healthy
+
+
+5.4 Test Application Endpoints
+--------------------------------------------------------------------------------
+
+# Test health endpoint
+curl -s http://$ALB_DNS/health | python3 -m json.tool
+
+# Expected output:
+# {
+#     "status": "healthy",
+#     "timestamp": "2026-04-25T...",
+#     "environment": "production",
+#     "version": "2.0.0"
+# }
+
+# Test root endpoint
+curl -s http://$ALB_DNS/ | python3 -m json.tool
+
+# Test API info
+curl -s http://$ALB_DNS/api/info | python3 -m json.tool
+
+
+5.5 Check ECR Image
+--------------------------------------------------------------------------------
+
+# Verify image exists
+aws ecr describe-images --repository-name myapp-repo --query 'imageDetails[0].imageTags[0]' --output text
+# Expected output: latest
+
+
+5.6 Check CloudWatch Alarms
+--------------------------------------------------------------------------------
+
+# List alarms
+aws cloudwatch describe-alarms --alarm-name-prefix myapp \
+  --query 'MetricAlarms[*].[AlarmName,StateValue]' --output table
+
+
+5.7 Comprehensive Health Check Script
+--------------------------------------------------------------------------------
+
+Create this script to check everything at once:
+
+#!/bin/bash
+echo "========================================="
+echo "CAPSTONE PROJECT HEALTH CHECK"
+echo "========================================="
+
+# ECS Service
+echo ""
+echo "1. ECS Service:"
+aws ecs describe-services --cluster myapp-cluster --services myapp-service \
+  --query 'services[0].[serviceName,status,runningCount,desiredCount]' --output table
+
+# Load Balancer
+echo ""
+echo "2. Load Balancer:"
+aws elbv2 describe-load-balancers --names myapp-alb \
+  --query 'LoadBalancers[0].[LoadBalancerName,State.Code,DNSName]' --output table
+
+# Target Health
+echo ""
+echo "3. Target Health:"
+TG_ARN=$(aws elbv2 describe-target-groups --names myapp-tg-blue --query 'TargetGroups[0].TargetGroupArn' --output text)
+aws elbv2 describe-target-health --target-group-arn $TG_ARN \
+  --query 'TargetHealthDescriptions[*].TargetHealth.State' --output text
+
+# ECR Image
+echo ""
+echo "4. ECR Image:"
+aws ecr describe-images --repository-name myapp-repo \
+  --query 'imageDetails[0].imageTags[0]' --output text
+
+# CloudWatch Alarms
+echo ""
+echo "5. CloudWatch Alarms:"
+aws cloudwatch describe-alarms --alarm-name-prefix myapp \
+  --query 'MetricAlarms[*].[AlarmName,StateValue]' --output table
+
+# Application Health
+echo ""
+echo "6. Application Health:"
+ALB_DNS=$(aws elbv2 describe-load-balancers --names myapp-alb --query 'LoadBalancers[0].DNSName' --output text)
+curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" http://$ALB_DNS/health
+
+echo ""
+echo "========================================="
+echo "HEALTH CHECK COMPLETE"
+echo "========================================="
+
+================================================================================
+6. COMMON ERRORS & TROUBLESHOOTING
+================================================================================
+
+6.1 Error: ECS was unable to assume the role
+--------------------------------------------------------------------------------
+
+Error Message:
+"ECS was unable to assume the role 'arn:aws:iam::XXX:role/ecsTaskExecutionRole'"
+
+Cause:
+The IAM role does not have the correct trust relationship or permissions.
+
+Solution:
+
+# Update trust relationship
+cat > trust-policy.json << 'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {"Service": "ecs-tasks.amazonaws.com"},
+    "Action": "sts:AssumeRole"
+  }]
+}
+EOF
+
+aws iam update-assume-role-policy \
+  --role-name ecsTaskExecutionRole \
+  --policy-document file://trust-policy.json
+
+# Attach required policies
+aws iam attach-role-policy \
+  --role-name ecsTaskExecutionRole \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+aws iam attach-role-policy \
+  --role-name ecsTaskExecutionRole \
+  --policy-arn arn:aws:iam::aws:policy/AmazonECRReadOnly
+
+
+6.2 Error: CannotPullContainerError - repository not found
+--------------------------------------------------------------------------------
+
+Error Message:
+"CannotPullContainerError: pull image manifest has been retried: repository not found"
+
+Cause:
+The ECR repository name in task definition does not match the actual repository name.
+
+Solution:
+
+# List actual repositories
+aws ecr describe-repositories --query 'repositories[*].repositoryName' --output table
+
+# Update task definition with correct repository name
+# Edit taskdef.json and ensure image URI matches exactly
+
+
+6.3 Error: Service was not idempotent
+--------------------------------------------------------------------------------
+
+Error Message:
+"Creation of service was not idempotent"
+
+Cause:
+The service already exists.
+
+Solution:
+
+# Update existing service instead
+aws ecs update-service \
+  --cluster myapp-cluster \
+  --service myapp-service \
+  --task-definition myapp-task \
+  --force-new-deployment
+
+# Or delete and recreate
+aws ecs delete-service --cluster myapp-cluster --service myapp-service --force
+aws ecs create-service ... (with your parameters)
+
+
+6.4 Error: CodeBuild cannot connect to Docker daemon
+--------------------------------------------------------------------------------
+
+Error Message:
+"Cannot connect to the Docker daemon"
+
+Cause:
+Privileged mode is not enabled in CodeBuild project.
+
+Solution:
+Enable privileged mode when creating CodeBuild project:
+
+aws codebuild update-project \
+  --name myapp-build \
+  --environment "type=LINUX_CONTAINER,computeType=BUILD_GENERAL1_MEDIUM,image=aws/codebuild/amazonlinux2-x86_64-standard:5.0,privilegedMode=true"
+
+
+6.5 Error: Load Balancer health checks failing
+--------------------------------------------------------------------------------
+
+Error Message:
+"Health checks failing - target is unhealthy"
+
+Cause:
+Security group does not allow traffic on port 3000.
+
+Solution:
+
+# Add security group rule for port 3000
+aws ec2 authorize-security-group-ingress \
+  --group-id $SG_ID \
+  --protocol tcp \
+  --port 3000 \
+  --cidr 0.0.0.0/0
+
+# Update health check path to be more permissive
+aws elbv2 modify-target-group \
+  --target-group-arn $TG_ARN \
+  --health-check-path /
+
+
+6.6 Error: Task fails to start - no log stream
+--------------------------------------------------------------------------------
+
+Error Message:
+"ResourceNotFoundException: The specified log group does not exist"
+
+Cause:
+CloudWatch log group not created.
+
+Solution:
+
+# Create log group
+aws logs create-log-group --log-group-name /ecs/myapp
+
+# Wait a few seconds and restart service
+aws ecs update-service \
+  --cluster myapp-cluster \
+  --service myapp-service \
+  --force-new-deployment
+
+
+6.7 Error: CodePipeline GitHub connection fails
+--------------------------------------------------------------------------------
+
+Error Message:
+"Unable to access GitHub repository"
+
+Cause:
+GitHub token is invalid or expired.
+
+Solution:
+1. Go to GitHub Settings -> Developer settings -> Personal access tokens
+2. Generate new token with 'repo' scope
+3. Update pipeline with new token via console or CLI
+
+
+6.8 Error: ECS Service tasks stuck in PENDING
+--------------------------------------------------------------------------------
+
+Cause:
+- Insufficient capacity in the selected availability zones
+- Task definition image URI is incorrect
+- IAM role permissions missing
+
+Solution:
+
+# Check task events for errors
+aws ecs describe-services --cluster myapp-cluster --services myapp-service \
+  --query 'services[0].events[0:5].[message]' --output table
+
+# Check if image exists in ECR
+aws ecr describe-images --repository-name myapp-repo
+
+# Force new deployment
+aws ecs update-service \
+  --cluster myapp-cluster \
+  --service myapp-service \
+  --force-new-deployment
+
+
+6.9 Error: Blue/Green deployment not working
+--------------------------------------------------------------------------------
+
+Cause:
+Missing second target group or listener.
+
+Solution:
+
+# Create green target group
+aws elbv2 create-target-group \
+  --name myapp-tg-green \
+  --protocol HTTP \
+  --port 3000 \
+  --vpc-id $VPC_ID \
+  --target-type ip \
+  --health-check-path /health
+
+# Create test listener on port 8080
+aws elbv2 create-listener \
+  --load-balancer-arn $ALB_ARN \
+  --protocol HTTP \
+  --port 8080 \
+  --default-actions Type=forward,TargetGroupArn=$TG_GREEN_ARN
+
+================================================================================
+7. CLEANUP COMMANDS
+================================================================================
+
+7.1 Complete Cleanup Script
+--------------------------------------------------------------------------------
+
+Run this script to delete all resources created for this project:
+
+#!/bin/bash
+echo "WARNING: This will delete all project resources"
+read -p "Type DELETE to confirm: " confirm
+
+if [ "$confirm" != "DELETE" ]; then
+    echo "Cleanup cancelled"
+    exit 1
+fi
+
+echo "Starting cleanup..."
+
+# 1. Delete ECS Service
+aws ecs update-service --cluster myapp-cluster --service myapp-service --desired-count 0
+sleep 30
+aws ecs delete-service --cluster myapp-cluster --service myapp-service --force
+
+# 2. Delete ECS Cluster
+aws ecs delete-cluster --cluster myapp-cluster
+
+# 3. Delete Load Balancer
+ALB_ARN=$(aws elbv2 describe-load-balancers --names myapp-alb --query 'LoadBalancers[0].LoadBalancerArn' --output text)
+aws elbv2 delete-load-balancer --load-balancer-arn $ALB_ARN
+
+# 4. Delete Target Groups
+TG_ARNS=$(aws elbv2 describe-target-groups --names myapp-tg-blue myapp-tg-green --query 'TargetGroups[*].TargetGroupArn' --output text)
+for TG in $TG_ARNS; do
+    aws elbv2 delete-target-group --target-group-arn $TG
+done
+
+# 5. Delete ECR Repository
+aws ecr delete-repository --repository-name myapp-repo --force
+
+# 6. Delete SNS Topic
+TOPIC_ARN=$(aws sns list-topics --query 'Topics[?contains(TopicArn, `myapp-alerts`)].TopicArn' --output text)
+if [ -n "$TOPIC_ARN" ]; then
+    aws sns delete-topic --topic-arn $TOPIC_ARN
+fi
+
+# 7. Delete CloudWatch Alarms
+aws cloudwatch delete-alarms --alarm-names myapp-high-cpu myapp-high-memory
+
+# 8. Delete CloudWatch Dashboard
+aws cloudwatch delete-dashboards --dashboard-names MyApp-Monitoring
+
+# 9. Delete CodeBuild Project
+aws codebuild delete-project --name myapp-build
+
+# 10. Delete CodePipeline
+aws codepipeline delete-pipeline --name myapp-pipeline
+
+# 11. Delete S3 Buckets
+aws s3 rm s3://myapp-codebuild-bucket-$YOUR_ACCOUNT_ID --recursive
+aws s3 rb s3://myapp-codebuild-bucket-$YOUR_ACCOUNT_ID
+
+# 12. Delete IAM Roles
+aws iam detach-role-policy --role-name ecsTaskExecutionRole --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+aws iam detach-role-policy --role-name ecsTaskExecutionRole --policy-arn arn:aws:iam::aws:policy/AmazonECRReadOnly
+aws iam detach-role-policy --role-name codebuild-role --policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser
+aws iam detach-role-policy --role-name codebuild-role --policy-arn arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+aws iam detach-role-policy --role-name codepipeline-role --policy-arn arn:aws:iam::aws:policy/AWSCodePipeline_FullAccess
+aws iam detach-role-policy --role-name codepipeline-role --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess
+aws iam detach-role-policy --role-name codepipeline-role --policy-arn arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess
+aws iam detach-role-policy --role-name codepipeline-role --policy-arn arn:aws:iam::aws:policy/AmazonECS_FullAccess
+
+aws iam delete-role --role-name ecsTaskExecutionRole
+aws iam delete-role --role-name codebuild-role
+aws iam delete-role --role-name codepipeline-role
+
+# 13. Delete VPC
+VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=myapp-vpc" --query 'Vpcs[0].VpcId' --output text)
+if [ -n "$VPC_ID" ]; then
+    for SUBNET in $(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" --query 'Subnets[*].SubnetId' --output text); do
+        aws ec2 delete-subnet --subnet-id $SUBNET
+    done
+    IGW_ID=$(aws ec2 describe-internet-gateways --filters "Name=attachment.vpc-id,Values=$VPC_ID" --query 'InternetGateways[0].InternetGatewayId' --output text)
+    if [ -n "$IGW_ID" ]; then
+        aws ec2 detach-internet-gateway --internet-gateway-id $IGW_ID --vpc-id $VPC_ID
+        aws ec2 delete-internet-gateway --internet-gateway-id $IGW_ID
+    fi
+    aws ec2 delete-vpc --vpc-id $VPC_ID
+fi
+
+echo "Cleanup complete!"
+
+================================================================================
+8. QUICK REFERENCE CARD
+================================================================================
+
+8.1 Resource Names Reference
+--------------------------------------------------------------------------------
+
+Resource Type          | Resource Name
+----------------------|------------------------
+ECR Repository        | myapp-repo
+ECS Cluster           | myapp-cluster
+ECS Service           | myapp-service
+Task Definition       | myapp-task
+Load Balancer         | myapp-alb
+Target Group (Blue)   | myapp-tg-blue
+Target Group (Green)  | myapp-tg-green
+Security Group        | myapp-sg
+CodeBuild Project     | myapp-build
+CodePipeline          | myapp-pipeline
+SNS Topic             | myapp-alerts
+CloudWatch Dashboard  | MyApp-Monitoring
+CloudWatch Alarms     | myapp-high-cpu, myapp-high-memory
+
+8.2 Useful Commands Quick Reference
+--------------------------------------------------------------------------------
+
+# Get service status
+aws ecs describe-services --cluster myapp-cluster --services myapp-service
+
+# Get ALB DNS
+aws elbv2 describe-load-balancers --names myapp-alb --query 'LoadBalancers[0].DNSName' --output text
+
+# Check task health
+aws ecs list-tasks --cluster myapp-cluster --service-name myapp-service
+
+# View service logs
+aws logs get-log-events --log-group-name /ecs/myapp --log-stream-name ecs/myapp-container/$(aws ecs list-tasks --cluster myapp-cluster --service-name myapp-service --query 'taskArns[0]' --output text | cut -d'/' -f3)
+
+# Force service redeployment
+aws ecs update-service --cluster myapp-cluster --service myapp-service --force-new-deployment
+
+# Get CloudWatch alarm state
+aws cloudwatch describe-alarms --alarm-name-prefix myapp
+
+# Send test SNS notification
+aws sns publish --topic-arn $(aws sns list-topics --query 'Topics[0].TopicArn' --output text) --subject "Test" --message "Test message"
+
+8.3 Architecture Summary
+--------------------------------------------------------------------------------
+
++---------------------------------------------------------------------------------+
+|                         PRODUCTION READY DEPLOYMENT                             |
++---------------------------------------------------------------------------------+
+|  GitHub -> CodeBuild -> ECR -> Manual Approval -> CodeDeploy -> ECS            |
+|                                                                                 |
+|  Features:                                                                      |
+|  (✓) Zero-downtime Blue/Green deployments                                      |
+|  (✓) Automated testing on every commit                                         |
+|  (✓) Manual approval before production                                         |
+|  (✓) CloudWatch monitoring with email alerts                                   |
+|  (✓) Auto-scaling ready                                                        |
+|  (✓) Security best practices (non-root user, rate limiting)                    |
++---------------------------------------------------------------------------------+
+
+================================================================================
