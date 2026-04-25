@@ -385,104 +385,72 @@ curl http://localhost:3000/health    # Health check → {"status":"healthy"}
 ---
 Deployed on Amazon ECS Fargate with full Blue/Green CI/CD automation.
 
-### Images
+### Live Application Access
+
+- Root: http://capstone-alb-2089285546.us-east-1.elb.amazonaws.com/
+- Health: http://capstone-alb-2089285546.us-east-1.elb.amazonaws.com/health
+- API Info: http://capstone-alb-2089285546.us-east-1.elb.amazonaws.com/api/info
+- Demo: http://capstone-alb-2089285546.us-east-1.elb.amazonaws.com/demo
+
+## Deployment Screenshots
+
+### Project Structure & Local Testing
 
 ![Project Structure](images/project-structure.png)
+*Figure 1: Local project structure showing all directories and files*
 
-*Figure 1: Project Structure locally*
+![Health Endpoint Test](images/health-Endpoint-Test.png)
+*Figure 2: Local testing of health endpoint showing successful response*
 
+![Root Endpoint Test](images/Root-Endpoint-Test.png)
+*Figure 3: Local testing of root endpoint showing welcome message*
 
-![Health Endpoint Test Working](images/health-Endpoint-Test.png)
-*Figure 3: Confirming after testing the application the helath endpoint is working*
+![Demo Page](images/demopage.png)
+*Figure 4: Local demo page displaying deployment information*
 
-
-![Root Endpoint Test Working](images/Root-Endpoint-Test.png)
-*Figure 4: Confirming after testing the application the root endpoint is working*
-
-
-![Root Endpoint Test Working](images/demopage.png)
-*Figure 4: Demo page working perfect*
-
-
-## 📸 Deployment Screenshots
-
-### Load Balancer Configuration
+### AWS Infrastructure Setup
 
 ![Load Balancer Active](images/loadbalance-active.png)
-*Figure 1: Application Load Balancer successfully created and active*
-
-### Target Group
+*Figure 5: Application Load Balancer (capstone-alb) successfully created and active*
 
 ![Target Group Created](images/target-group-created.png)
-*Figure 2: Target group configured for ECS Fargate tasks*
-
-### ECS Service Deployment
+*Figure 6: Target group (capstone-tg) configured for ECS Fargate tasks*
 
 ![Deployment Completed](images/deployment-completed.png)
-*Figure 3: ECS Service showing 2 running tasks with steady state*
+*Figure 7: ECS Service showing 2 running tasks with steady state*
 
-### Application Endpoints
+### Application Endpoints - AWS Deployment
 
-#### Root Endpoint
 ![Root Endpoint](images/root_endpoint.png)
-*Figure 4: Root endpoint returning welcome message with pipeline information*
+*Figure 8: Root endpoint returning welcome message with pipeline information*
 
-#### Health Check Endpoint
 ![Health Endpoint](images/health_endpoint.png)
-*Figure 5: Health check endpoint showing application status*
+*Figure 9: Health check endpoint showing application status with version 2.0.0*
 
-#### API Info Endpoint
 ![API Info Endpoint](images/API_info_endpoint.png)
-*Figure 6: API information endpoint with application metadata*
+*Figure 10: API information endpoint displaying application metadata and architecture*
 
-#### Demo Page
-![Demo Page](images/Demo_page_deployment.png)
-*Figure 7: HTML demo page showing deployment information*
+![Demo Page Deployment](images/Demo_page_deployment.png)
+*Figure 11: HTML demo page showing successful deployment on ECS Fargate*
 
 ### AWS CLI Verification
 
-![CLI Root & Health Endpoints](images/AWS-cli-root-health-endpoints.png)
-*Figure 8: AWS CLI showing successful API responses*
+![CLI Root and Health Endpoints](images/AWS-cli-root-health-endpoints.png)
+*Figure 12: AWS CLI showing successful API responses for root and health endpoints*
 
 ![CLI Demo Page](images/AWS-cli-Demo-Page-endpoint.png)
-*Figure 9: AWS CLI showing demo page HTML output*
+*Figure 13: AWS CLI displaying demo page HTML output*
 
-# Live Application
-
-| Endpoint | URL |
-|----------|-----|
-| Root | http://capstone-alb-2089285546.us-east-1.elb.amazonaws.com/ |
-| Health | http://capstone-alb-2089285546.us-east-1.elb.amazonaws.com/health |
-| API Info | http://capstone-alb-2089285546.us-east-1.elb.amazonaws.com/api/info |
-| Metrics | http://capstone-alb-2089285546.us-east-1.elb.amazonaws.com/metrics |
-| Demo | http://capstone-alb-2089285546.us-east-1.elb.amazonaws.com/demo |
-
-## Verification Reports
-
-### CLI Verification Report
-
-The following output confirms all components are operational:
+### Monitoring and Alerts Verification
 
 ![CLI Verification Report](images/verification-cli-report.png)
-
-*Figure 1: Complete CLI verification showing ECS service, load balancer, ECR image, CloudWatch alarms, and SNS topic all reporting successful status.*
-
-### CloudWatch Monitoring Dashboard
-
-The monitoring dashboard shows real-time metrics:
+*Figure 14: Complete CLI verification showing ECS service, load balancer, ECR image, CloudWatch alarms, and SNS topic*
 
 ![CloudWatch Dashboard](images/dashboard.png)
-
-*Figure 2: CloudWatch dashboard displaying ECS service health metrics, load balancer performance, and task health monitoring.*
-
-### SNS Email Notifications
-
-Email notifications confirm the monitoring system is active:
+*Figure 15: CloudWatch monitoring dashboard displaying ECS service health metrics, load balancer performance, and task health*
 
 ![SNS Subscription Confirmation](images/email-sns.png)
-
-*Figure 3: SNS subscription confirmation email received and confirmed.*
+*Figure 16: SNS subscription confirmation email received and confirmed for monitoring alerts*
 
 ![SNS Test Notification](images/AWS-Notification-Test-Notification.png)
-
-*Figure 4: Test notification from CloudWatch alarms demonstrating working alert system.*
+*Figure 17: Test notification from CloudWatch alarms demonstrating working alert system*
